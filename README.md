@@ -17,12 +17,12 @@ Spring Boot 3 (Java 17) REST API za upravljanje knjigama. PostgreSQL + Flyway mi
 
 | Varijabla       | Default                | Opis                                   |
 |-----------------|------------------------|----------------------------------------|
-| DB_HOST         | localhost              | RDS endpoint (samo hostname, bez porta)|
+| DB_HOST         | library-db             | RDS endpoint (samo hostname, bez porta)|
 | DB_PORT         | 5432                   | Port baze                              |
 | DB_NAME         | library                | Naziv baze                             |
 | DB_USERNAME     | postgres               | DB korisnik                            |
 | DB_PASSWORD     | localdev               | DB šifra (u klasteru K8s Secret)       |
-| ALLOWED_ORIGINS | http://localhost:4200  | CORS origins (zarez-separisano)        |
+| ALLOWED_ORIGINS | http://library-fe:4200 | CORS origins (zarez-separisano)        |
 
 ## Lokalno pokretanje
 
@@ -34,9 +34,9 @@ docker run -d --name library-db --network platform-network -p 5432:5432 -e POSTG
 mvn spring-boot:run
 docker run -d --name library-be --network platform-network -p 8080:8080 ${{ secrets.DOCKERHUB_USERNAME }}/jovan-vukasinovic-platform:library-be-latest
 
-# 3. Test
-curl http://localhost:8080/api/books
-curl -X POST http://localhost:8080/api/books \
+# 3. Test iz Postmana ka Docker Desktopu
+curl http://host.docker.internal:8080/api/books
+curl -X POST http://host.docker.internal:8080/api/books \
   -H "Content-Type: application/json" \
   -d '{"title":"Na Drini cuprija","author":"Ivo Andric","publishedYear":1945,"status":"DOSTUPNO"}'
 ```
