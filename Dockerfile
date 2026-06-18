@@ -11,8 +11,9 @@ COPY ./src /app/src
 RUN mvn -B clean package -DskipTests
 
 # ---------- Runtime stage ----------
-# https://hub.docker.com/layers/library/eclipse-temurin/17.0.13_11-jre-alpine/images/sha256-1dbece501e138146372e2a0b3f5d7545df8415b2caab1e9ef77e0f66e2aabe57
-FROM eclipse-temurin:17.0.13_11-jre-alpine AS runtime
+# Before: https://hub.docker.com/layers/library/eclipse-temurin/17.0.13_11-jre-alpine/images/sha256-1dbece501e138146372e2a0b3f5d7545df8415b2caab1e9ef77e0f66e2aabe57
+# After: https://hub.docker.com/layers/library/eclipse-temurin/17.0.19_10-jre-alpine-3.23/images/sha256-268ed4534cb05c6ebbec22c750c2435183692d399757bf78e103e980ec5208ae
+FROM eclipse-temurin:17.0.19_10-jre-alpine-3.23 AS runtime
 WORKDIR /app/
 
 # Pokretanje kao non-root korisnik (security best practice)
