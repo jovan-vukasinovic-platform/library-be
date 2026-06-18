@@ -43,3 +43,9 @@ curl -X POST http://localhost:8080/api/books \
 
 Flyway automatski kreira tabelu `books` pri prvom startu — nije potrebna ručna SQL skripta.
 Napomena: baza `library` mora postojati na RDS-u (Flyway kreira tabele, ne bazu).
+
+## Testovi
+
+```bash
+mvn test
+```
