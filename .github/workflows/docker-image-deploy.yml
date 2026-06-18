@@ -22,7 +22,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           # Build-uj tačno onaj commit koji je prošao CI (ne najnoviji main)
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
@@ -47,11 +47,13 @@ jobs:
           context: .
           push: false
           load: true
+          pull: true
           tags: |
             ${{ steps.image.outputs.full_tag }}
             ${{ steps.image.outputs.latest_tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          no-cache: true
 
       - name: Scan image with Trivy
         id: trivy
