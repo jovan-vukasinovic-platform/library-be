@@ -28,11 +28,11 @@ Spring Boot 3 (Java 17) REST API za upravljanje knjigama. PostgreSQL + Flyway mi
 
 ```bash
 # 1. Lokalni PostgreSQL (ili koristi RDS endpoint direktno)
-docker run -d --name library-db -p 5432:5432 -e POSTGRES_DB=library -e POSTGRES_PASSWORD=localdev postgres:16-alpine
+docker run -d --name library-db --network platform-network -p 5432:5432 -e POSTGRES_DB=library -e POSTGRES_PASSWORD=localdev postgres:16-alpine
 
-# 2. Pokreni aplikaciju
-export DB_PASSWORD=localdev
-./mvnw spring-boot:run   # ili: mvn spring-boot:run
+# 2. Pokreni aplikaciju lokalno ili kao Docker kontejner
+mvn spring-boot:run
+docker run -d --name library-be --network platform-network -p 8080:8080 ${{ secrets.DOCKERHUB_USERNAME }}/jovan-vukasinovic-platform:library-be-latest
 
 # 3. Test
 curl http://localhost:8080/api/books
