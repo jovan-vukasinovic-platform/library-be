@@ -1,0 +1,104 @@
+# https://docs.github.com/en/actions/tutorials/publish-packages/publish-docker-images
+name: Docker Image Deploy
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/jovan-vukasinovic-platform
+
+jobs:
+  docker:
+    name: Build & Push Backend image
+    runs-on: ubuntu-latest
+    # workflow se okida ili ručnim pokretanjem ili ako uspešno CI prođe
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Build-uj tačno onaj commit koji je prošao CI (ne najnoviji main)
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Generate Image tag
+        id: image
+        shell: bash
+        run: |
+          DATE_TAG=$(TZ=Europe/Belgrade date +'%Y%m%d_%H%M')
+          FULL_TAG="${IMAGE_NAME}:library-be-${DATE_TAG}"
+          LATEST_TAG="${IMAGE_NAME}:library-be-latest"
+          echo "full_tag=${FULL_TAG}" >> "$GITHUB_OUTPUT"
+          echo "latest_tag=${LATEST_TAG}" >> "$GITHUB_OUTPUT"
+          echo "Docker image: ${FULL_TAG}"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: false
+          load: true
+          tags: |
+            ${{ steps.image.outputs.full_tag }}
+            ${{ steps.image.outputs.latest_tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Scan image with Trivy
+        id: trivy
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ steps.image.outputs.full_tag }}
+          scan-type: image
+          scanners: vuln
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false     # Trivy će oboriti pipeline iako ne postoji patch!
+          format: table
+          output: trivy-report.txt
+          exit-code: 1
+
+      # Prikazuje rezultat u GitHub Actions logu, čak i kada je Trivy prethodno oborio pipeline
+      - name: Display Trivy report
+        if: always()
+        shell: bash
+        run: |
+          if [ -f trivy-report.txt ]; then
+            cat trivy-report.txt
+          else
+            echo "Trivy report was not generated."
+          fi
+
+      # Čuva izveštaj kao GitHub Actions artifact.
+      - name: Upload Trivy report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-library-be-report
+          path: trivy-report.txt
+          if-no-files-found: warn
+          retention-days: 14
+
+      # Ovi koraci se izvršavaju samo ako Trivy uspe.
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Push versioned image
+        shell: bash
+        run: docker push "${{ steps.image.outputs.full_tag }}"
+
+      - name: Push latest image
+        shell: bash
+        run: docker push "${{ steps.image.outputs.latest_tag }}"
