@@ -11,18 +11,21 @@ COPY ./src /app/src
 RUN mvn -B clean package -DskipTests
 
 # ---------- Runtime stage ----------
-# Before: https://hub.docker.com/layers/library/eclipse-temurin/17.0.13_11-jre-alpine/images/sha256-1dbece501e138146372e2a0b3f5d7545df8415b2caab1e9ef77e0f66e2aabe57
-# After: https://hub.docker.com/layers/library/eclipse-temurin/17.0.19_10-jre-alpine-3.23/images/sha256-268ed4534cb05c6ebbec22c750c2435183692d399757bf78e103e980ec5208ae
-FROM eclipse-temurin:17.0.19_10-jre-alpine-3.23 AS runtime
+# Alpine 3.23 je imao 3x HIGH (libcrypto3/libssl3/openssl) -> presli smo na UBI10-minimal (0 ranjivosti)
+# Before: https://hub.docker.com/layers/library/eclipse-temurin/17.0.19_10-jre-alpine-3.23/images/sha256-268ed4534cb05c6ebbec22c750c2435183692d399757bf78e103e980ec5208ae
+# After: https://hub.docker.com/layers/library/eclipse-temurin/17.0.19_10-jre-ubi10-minimal/images/sha256-6aa4e8f84d5e5ed9547d3d506c3260adf82429cadf8856f521b98c77b4676fc3
+FROM eclipse-temurin:17.0.19_10-jre-ubi10-minimal AS runtime
 WORKDIR /app/
-
-# Pokretanje kao non-root korisnik (security best practice)
-RUN addgroup -S spring && adduser -S spring -G spring
-USER spring:spring
 
 # Spring Boot Maven plugin pravi izvrsni JAR u target/
 COPY --from=build /app/target/library-be-*.jar /app/library-be.jar
+
+# Novi UBI image koji nije Alpine (nema busybox addgroup/adduser)
+# Koristi se numericki UID za non-root korisnike (OpenShift-friendly)
+USER 1001
 EXPOSE 8080
+
+ENTRYPOINT ["java", "-jar", "/app/library-be.jar"]
 
 # ---------- Docker Commands ----------
 # docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/jovan-vukasinovic-platform:library-be-latest -f Dockerfile .
