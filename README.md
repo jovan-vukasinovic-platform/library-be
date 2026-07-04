@@ -27,6 +27,9 @@ Spring Boot 3 (Java 17) REST API za upravljanje knjigama. PostgreSQL + Flyway mi
 ## Lokalno pokretanje
 
 ```bash
+# 0. Kreiranje mreže platform-network
+docker network create platform-network
+
 # 1. Lokalni PostgreSQL (ili koristi RDS endpoint direktno)
 docker run -d --name library-db --network platform-network -p 5432:5432 -e POSTGRES_DB=library -e POSTGRES_PASSWORD=localdev postgres:16-alpine
 
