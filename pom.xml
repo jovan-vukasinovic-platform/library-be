@@ -21,6 +21,14 @@
         <java.version>17</java.version>
     </properties>
 
+    <properties>
+        <java.version>17</java.version>
+        <!--
+          CVE-2026-54291 (HIGH): pgjdbc 42.7.4-42.7.11
+        -->
+        <postgresql.version>42.7.12</postgresql.version>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
