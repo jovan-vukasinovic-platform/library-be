@@ -19,10 +19,6 @@
 
     <properties>
         <java.version>17</java.version>
-    </properties>
-
-    <properties>
-        <java.version>17</java.version>
         <!--
           CVE-2026-54291 (HIGH): pgjdbc 42.7.4-42.7.11
         -->
