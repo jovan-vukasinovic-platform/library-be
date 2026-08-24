@@ -32,6 +32,7 @@ jobs:
           DATE_TAG=$(TZ=Europe/Belgrade date +'%Y%m%d_%H%M')
           FULL_TAG="${IMAGE_NAME}:${DATE_TAG}"
           LATEST_TAG="${IMAGE_NAME}:latest"
+          echo "date_tag=${DATE_TAG}" >> "$GITHUB_OUTPUT"
           echo "full_tag=${FULL_TAG}" >> "$GITHUB_OUTPUT"
           echo "latest_tag=${LATEST_TAG}" >> "$GITHUB_OUTPUT"
           echo "Docker image: ${FULL_TAG}"
@@ -105,3 +106,47 @@ jobs:
       - name: Push latest image
         shell: bash
         run: docker push "${{ steps.image.outputs.latest_tag }}"
+
+      # ---- GitOps: upis novog taga u manifest repozitorijum ----
+      - name: Upis taga u library-manifest
+        env:
+          GH_TOKEN:      ${{ secrets.MANIFEST_WRITE_PAT }}
+          NEW_TAG:       ${{ steps.image.outputs.date_tag }}
+          MANIFEST_REPO: jovan-vukasinovic-platform/library-manifest
+          VALUES_FILE:   environment/dev/values.yaml
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git clone --depth 1 --branch main \
+            "https://x-access-token:${GH_TOKEN}@github.com/${MANIFEST_REPO}.git" manifest
+          cd manifest
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Optimisticko zakljucavanje: procitaj -> izmeni -> upisi, uz ponavljanje
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git reset --hard origin/main
+
+            yq -i '.["library-be"].image.tag = strenv(NEW_TAG)
+                   | .["library-be"].image.tag style="double"' "${VALUES_FILE}"
+
+            git add "${VALUES_FILE}"
+            if git diff --cached --quiet; then
+              echo "Manifest vec sadrzi tag ${NEW_TAG} - nema izmene."
+              exit 0
+            fi
+
+            git commit -m "chore(library-be): image tag -> ${NEW_TAG}"
+            if git push origin HEAD:main; then
+              echo "Tag ${NEW_TAG} upisan u ${MANIFEST_REPO}."
+              exit 0
+            fi
+
+            echo "Push odbijen (paralelan upis), pokusaj ${attempt} od 3."
+            sleep $(( attempt * 3 ))
+          done
+
+          echo "::error::Upis taga u ${MANIFEST_REPO} nije uspeo nakon tri pokusaja."
+          exit 1
